@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="zh-tw">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Three.js 防止破版示例</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        #three-canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        
+        .login {
+            position: absolute;
+            width: 450px;
+            z-index: 10;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            transition: transform 0.2s ease-out;
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="three-canvas"></canvas>
+    <img src="img/login.svg" alt="登入按鈕" class="login">
+
+    <script>
+        const canvas = document.getElementById("three-canvas");
+        const renderer = new THREE.WebGLRenderer({
+            canvas,
+            antialias: true
+        });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+
+        const scene = new THREE.Scene();
+
+        // 視角改為 60，並把相機往後拉一點
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.z = 1.5;
+
+        // 光源
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+        scene.add(ambientLight);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(0, 1, 1);
+        scene.add(directionalLight);
+
+        // 載入貼圖
+        const textureLoader = new THREE.TextureLoader();
+        const texture = textureLoader.load("img/bg.jpg");
+
+        let planeMesh = null;
+
+        function createOrUpdatePlane() {
+            const vFOV = (camera.fov * Math.PI) / 180;
+            const planeHeight = 2 * Math.tan(vFOV / 2) * camera.position.z;
+            const planeWidth = planeHeight * camera.aspect;
+
+            if (planeMesh) {
+                planeMesh.geometry.dispose();
+                planeMesh.material.dispose();
+                scene.remove(planeMesh);
+            }
+
+            // 放大倍數改為 1.5
+            const geometry = new THREE.PlaneGeometry(
+                planeWidth * 1.2,
+                planeHeight * 1.2,
+                20, 20
+            );
+            const material = new THREE.MeshLambertMaterial({
+                map: texture
+            });
+            planeMesh = new THREE.Mesh(geometry, material);
+            scene.add(planeMesh);
+        }
+
+        createOrUpdatePlane();
+
+        document.addEventListener("mousemove", (event) => {
+            const x = (event.clientX / window.innerWidth - 0.5) * 2;
+            const y = (event.clientY / window.innerHeight - 0.5) * 2;
+
+            // 減小旋轉幅度：從 0.3 改為 0.2
+            if (planeMesh) {
+                planeMesh.rotation.y = x * 0.2;
+                // planeMesh.rotation.x = -y * 0.2;
+            }
+
+            // 登入按鈕視差
+            const loginBtn = document.querySelector(".login");
+            if (loginBtn) {
+                loginBtn.style.transform = `translate(
+          calc(-50% + ${x * 20}px),
+          calc(-50% + ${y * 20}px)
+        )`;
+            }
+        });
+
+        function animate() {
+            requestAnimationFrame(animate);
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        window.addEventListener("resize", () => {
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+            renderer.setSize(width, height);
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            createOrUpdatePlane();
+        });
+    </script>
+</body>
+
+</html>
